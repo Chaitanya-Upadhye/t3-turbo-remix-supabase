@@ -37,4 +37,10 @@ export const postRouter = {
   delete: protectedProcedure.input(z.string()).mutation(({ ctx, input }) => {
     return ctx.db.delete(Post).where(eq(Post.id, input));
   }),
+
+  // Prisma procedures - drizzle ones to be removed later
+
+  prisma_all: publicProcedure.query(({ ctx }) => {
+    return ctx.prisma.post.findMany({ take: 10 });
+  }),
 } satisfies TRPCRouterRecord;

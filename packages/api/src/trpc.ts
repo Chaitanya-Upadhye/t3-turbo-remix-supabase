@@ -12,7 +12,7 @@ import { ZodError } from "zod";
 
 import type { Session } from "@acme/auth";
 import { auth, validateToken } from "@acme/auth";
-import { db } from "@acme/db/client";
+import { db, prisma } from "@acme/db/client";
 
 /**
  * Isomorphic Session getter for API requests
@@ -50,6 +50,7 @@ export const createTRPCContext = async (opts: {
   return {
     session,
     db,
+    prisma,
     token: authToken,
   };
 };

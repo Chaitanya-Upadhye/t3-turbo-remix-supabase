@@ -1,0 +1,54 @@
+{
+  "name": "@acme/remix",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm with-env remix vite:build",
+    "dev": "pnpm with-env remix vite:dev",
+    "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
+    "start": "pnpm with-env remix-serve ./build/server/index.js",
+    "with-env": "dotenv -e ../../.env --",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@acme/api": "workspace:*",
+    "@acme/auth": "workspace:*",
+    "@acme/db": "workspace:*",
+    "@acme/ui": "workspace:*",
+    "@acme/validators": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "@trpc/client": "catalog:",
+    "@trpc/react-query": "catalog:",
+    "@trpc/server": "catalog:",
+    "@remix-run/node": "^2.11.2",
+    "@remix-run/react": "^2.11.2",
+    "@remix-run/serve": "^2.11.2",
+    "isbot": "^4.1.0",
+    "react": "catalog:react18",
+    "react-dom": "catalog:react18"
+  },
+  "devDependencies": {
+    "@acme/eslint-config": "workspace:*",
+    "@acme/prettier-config": "workspace:*",
+    "@acme/tailwind-config": "workspace:*",
+    "@acme/tsconfig": "workspace:*",
+    "@types/node": "^20.14.15",
+    "@remix-run/dev": "^2.11.2",
+    "@types/react": "catalog:react18",
+    "@types/react-dom": "catalog:react18",
+    "autoprefixer": "^10.4.19",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "^5.1.0",
+    "vite-tsconfig-paths": "^4.2.1",
+    "jiti": "^1.21.6",
+    "dotenv-cli": "^7.4.2"
+  },
+  "prettier": "@acme/prettier-config",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -27,9 +27,13 @@
     "push": "pnpm with-env drizzle-kit push",
     "studio": "pnpm with-env drizzle-kit studio",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false",
+    "db:generate": "with-env prisma generate",
+    "db:push": "with-env prisma db push --skip-generate",
+    "db:pull": "with-env prisma db pull",
     "with-env": "dotenv -e ../../.env --"
   },
   "dependencies": {
+    "@prisma/client": "5.18.0",
     "@vercel/postgres": "^0.9.0",
     "drizzle-orm": "^0.33.0",
     "drizzle-zod": "^0.5.1",
@@ -43,6 +47,7 @@
     "drizzle-kit": "^0.24.0",
     "eslint": "catalog:",
     "prettier": "catalog:",
+    "prisma": "^5.18.0",
     "typescript": "catalog:"
   },
   "prettier": "@acme/prettier-config"
