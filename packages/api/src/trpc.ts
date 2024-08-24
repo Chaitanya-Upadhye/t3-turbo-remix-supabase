@@ -6,6 +6,7 @@
  * tl;dr - this is where all the tRPC server stuff is created and plugged in.
  * The pieces you will need to use are documented accordingly near the end
  */
+import { createServerClient, parseCookieHeader } from "@supabase/ssr";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
@@ -19,6 +20,19 @@ import { db, prisma } from "@acme/db/client";
  * - Expo requests will have a session token in the Authorization header
  * - Next.js requests will have a session token in cookies
  */
+const supabaseServerClient = (req: Request) => {
+  return createServerClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return parseCookieHeader(req.headers.get("cookie") ?? "");
+        },
+      },
+    },
+  );
+};
 const isomorphicGetSession = async (headers: Headers) => {
   const authToken = headers.get("Authorization") ?? null;
   if (authToken) return validateToken(authToken);
@@ -55,6 +69,14 @@ export const createTRPCContext = async (opts: {
   };
 };
 
+export const createTRPCContextRemix = async (req: Request) => {
+  const supabase = supabaseServerClient(req);
+  const { data } = await supabase.auth.getSession();
+  return {
+    prisma,
+    session: data.session,
+  };
+};
 /**
  * 2. INITIALIZATION
  *
@@ -71,12 +93,23 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
     },
   }),
 });
+const tRemix = initTRPC.context<typeof createTRPCContextRemix>().create({
+  transformer: superjson,
+  errorFormatter: ({ shape, error }) => ({
+    ...shape,
+    data: {
+      ...shape.data,
+      zodError: error.cause instanceof ZodError ? error.cause.flatten() : null,
+    },
+  }),
+});
 
 /**
  * Create a server-side caller
  * @see https://trpc.io/docs/server/server-side-calls
  */
 export const createCallerFactory = t.createCallerFactory;
+export const createCallerFactoryRemix = tRemix.createCallerFactory;
 
 /**
  * 3. ROUTER & PROCEDURE (THE IMPORTANT BIT)
@@ -90,6 +123,7 @@ export const createCallerFactory = t.createCallerFactory;
  * @see https://trpc.io/docs/router
  */
 export const createTRPCRouter = t.router;
+export const createTRPCRouterRemix = tRemix.router;
 
 /**
  * Middleware for timing procedure execution and adding an articifial delay in development.
