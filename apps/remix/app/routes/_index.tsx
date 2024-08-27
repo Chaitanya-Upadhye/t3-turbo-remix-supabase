@@ -3,7 +3,7 @@ import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { createBrowserClient } from "@supabase/ssr";
 
-import { remixCaller } from "@acme/api";
+import { client } from "~/utils/api";
 
 export const meta: MetaFunction = () => {
   return [
@@ -12,8 +12,11 @@ export const meta: MetaFunction = () => {
   ];
 };
 export async function loader({ request }: LoaderFunctionArgs) {
-  const trpc = await remixCaller(request);
-  const data = await trpc.post.prisma_all();
+  const data = await client(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    request,
+  ).post.prisma_all.query();
 
   const env = {
     SUPABASE_URL: process.env.SUPABASE_URL!,
@@ -32,8 +35,8 @@ export default function Index() {
       <button
         onClick={async () => {
           await supabase.auth.signInWithPassword({
-            email: "",
-            password: "",
+            email: "admin@trackem.com",
+            password: "Test@123",
           });
         }}
       >

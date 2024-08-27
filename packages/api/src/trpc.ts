@@ -6,37 +6,29 @@
  * tl;dr - this is where all the tRPC server stuff is created and plugged in.
  * The pieces you will need to use are documented accordingly near the end
  */
-import { createServerClient, parseCookieHeader } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import type { Session } from "@acme/auth";
-import { auth, validateToken } from "@acme/auth";
-import { db, prisma } from "@acme/db/client";
+import { createSupabaseServerClient } from "@acme/auth";
+import { prisma } from "@acme/db/client";
 
 /**
  * Isomorphic Session getter for API requests
  * - Expo requests will have a session token in the Authorization header
  * - Next.js requests will have a session token in cookies
  */
-const supabaseServerClient = (req: Request) => {
-  return createServerClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return parseCookieHeader(req.headers.get("cookie") ?? "");
-        },
-      },
-    },
-  );
-};
-const isomorphicGetSession = async (headers: Headers) => {
+
+const isomorphicGetSession = async (
+  headers: Headers,
+  supabase: SupabaseClient,
+) => {
   const authToken = headers.get("Authorization") ?? null;
-  if (authToken) return validateToken(authToken);
-  return auth();
+  if (authToken) return supabase.auth.getUser(authToken);
+  console.log({ authToken, session: supabase.auth.getSession() });
+  return supabase.auth.getUser();
 };
 
 /**
@@ -51,30 +43,17 @@ const isomorphicGetSession = async (headers: Headers) => {
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: {
-  headers: Headers;
-  session: Session | null;
-}) => {
-  const authToken = opts.headers.get("Authorization") ?? null;
-  const session = await isomorphicGetSession(opts.headers);
 
-  const source = opts.headers.get("x-trpc-source") ?? "unknown";
-  console.log(">>> tRPC Request from", source, "by", session?.user);
-
-  return {
-    session,
-    db,
-    prisma,
-    token: authToken,
-  };
-};
-
-export const createTRPCContextRemix = async (req: Request) => {
-  const supabase = supabaseServerClient(req);
-  const { data } = await supabase.auth.getSession();
+export const createTRPCContext = async ({
+  req,
+  resHeaders,
+}: FetchCreateContextFnOptions) => {
+  const supabase = createSupabaseServerClient({ req, resHeaders });
+  const { data } = await isomorphicGetSession(req.headers, supabase);
   return {
     prisma,
-    session: data.session,
+    session: data.user,
+    supabase,
   };
 };
 /**
@@ -83,17 +62,8 @@ export const createTRPCContextRemix = async (req: Request) => {
  * This is where the trpc api is initialized, connecting the context and
  * transformer
  */
+
 const t = initTRPC.context<typeof createTRPCContext>().create({
-  transformer: superjson,
-  errorFormatter: ({ shape, error }) => ({
-    ...shape,
-    data: {
-      ...shape.data,
-      zodError: error.cause instanceof ZodError ? error.cause.flatten() : null,
-    },
-  }),
-});
-const tRemix = initTRPC.context<typeof createTRPCContextRemix>().create({
   transformer: superjson,
   errorFormatter: ({ shape, error }) => ({
     ...shape,
@@ -109,7 +79,6 @@ const tRemix = initTRPC.context<typeof createTRPCContextRemix>().create({
  * @see https://trpc.io/docs/server/server-side-calls
  */
 export const createCallerFactory = t.createCallerFactory;
-export const createCallerFactoryRemix = tRemix.createCallerFactory;
 
 /**
  * 3. ROUTER & PROCEDURE (THE IMPORTANT BIT)
@@ -123,7 +92,6 @@ export const createCallerFactoryRemix = tRemix.createCallerFactory;
  * @see https://trpc.io/docs/router
  */
 export const createTRPCRouter = t.router;
-export const createTRPCRouterRemix = tRemix.router;
 
 /**
  * Middleware for timing procedure execution and adding an articifial delay in development.
@@ -168,13 +136,13 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
-    if (!ctx.session?.user) {
+    if (!ctx.session) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
     return next({
       ctx: {
         // infers the `session` as non-nullable
-        session: { ...ctx.session, user: ctx.session.user },
+        session: { ...ctx.session, user: ctx.session },
       },
     });
   });

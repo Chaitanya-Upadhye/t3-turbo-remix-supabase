@@ -1,15 +1,9 @@
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
+import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 
-import { db, prisma } from "@acme/db/client";
-
-import type { AppRouter, AppRouterRemix } from "./root";
-import { appRouter, appRouterRemix } from "./root";
-import {
-  createCallerFactory,
-  createCallerFactoryRemix,
-  createTRPCContext,
-  createTRPCContextRemix,
-} from "./trpc";
+import type { AppRouter } from "./root";
+import { appRouter } from "./root";
+import { createCallerFactory, createTRPCContext } from "./trpc";
 
 /**
  * Create a server-side caller for the tRPC API
@@ -19,9 +13,8 @@ import {
  *       ^? Post[]
  */
 const createCaller = createCallerFactory(appRouter);
-const createCallerRemix = createCallerFactoryRemix(appRouterRemix);
-const remixCaller = async (req: Request) =>
-  createCallerRemix(await createTRPCContextRemix(req));
+const remixCaller = async (context: FetchCreateContextFnOptions) =>
+  createCaller(await createTRPCContext(context));
 
 /**
  * Inference helpers for input types
@@ -30,7 +23,6 @@ const remixCaller = async (req: Request) =>
  *      ^? { id: number }
  **/
 type RouterInputs = inferRouterInputs<AppRouter>;
-type RouterInputsRemix = inferRouterInputs<AppRouter>;
 
 /**
  * Inference helpers for output types
@@ -39,22 +31,6 @@ type RouterInputsRemix = inferRouterInputs<AppRouter>;
  *      ^? Post[]
  **/
 type RouterOutputs = inferRouterOutputs<AppRouter>;
-type RouterOutputsRemix = inferRouterOutputs<AppRouter>;
 
-export {
-  createTRPCContext,
-  appRouter,
-  appRouterRemix,
-  createCallerRemix,
-  remixCaller,
-  createCaller,
-  createTRPCContextRemix,
-};
-export type {
-  AppRouter,
-  AppRouterRemix,
-  RouterInputs,
-  RouterOutputs,
-  RouterOutputsRemix,
-  RouterInputsRemix,
-};
+export { createTRPCContext, appRouter, createCaller, remixCaller };
+export type { AppRouter, RouterInputs, RouterOutputs };

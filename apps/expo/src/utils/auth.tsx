@@ -24,7 +24,7 @@ export const signIn = async () => {
 
 export const useUser = () => {
   const { data: session } = api.auth.getSession.useQuery();
-  return session?.user ?? null;
+  return session ?? null;
 };
 
 export const useSignIn = () => {
@@ -45,7 +45,7 @@ export const useSignOut = () => {
 
   return async () => {
     const res = await signOut.mutateAsync();
-    if (!res.success) return;
+    if (res.error) return;
     await deleteToken();
     await utils.invalidate();
     router.replace("/");

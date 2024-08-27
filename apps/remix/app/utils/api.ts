@@ -1,9 +1,8 @@
 // app/utils/api.ts
-import { createBrowserClient } from "@supabase/ssr";
 import { createTRPCClient, httpBatchLink, loggerLink } from "@trpc/client";
 import superjson from "superjson";
 
-import type { AppRouterRemix } from "@acme/api";
+import type { AppRouter } from "@acme/api";
 
 const getBaseUrl = () => {
   if (typeof window !== "undefined") return ""; // browser should use relative url
@@ -11,9 +10,12 @@ const getBaseUrl = () => {
   return `http://localhost:${process.env.port ?? 5173}`; // dev SSR should use localhost
 };
 
-export const client = (SUPBASE_URL: string, SUPABASE_ANON_KEY: string) => {
-  const supabase = createBrowserClient(SUPBASE_URL, SUPABASE_ANON_KEY);
-  return createTRPCClient<AppRouterRemix>({
+export const client = (
+  SUPBASE_URL: string,
+  SUPABASE_ANON_KEY: string,
+  request: Request,
+) => {
+  return createTRPCClient<AppRouter>({
     links: [
       loggerLink({
         enabled: (opts) =>
@@ -23,11 +25,8 @@ export const client = (SUPBASE_URL: string, SUPABASE_ANON_KEY: string) => {
       httpBatchLink({
         url: `${getBaseUrl()}/api/trpc`,
         transformer: superjson,
-        async headers() {
-          return {
-            Authorization: (await supabase.auth.getSession()).data.session
-              ?.access_token,
-          };
+        headers() {
+          return Object.fromEntries(request.headers);
         },
       }),
     ],

@@ -4,6 +4,8 @@ import { z } from "zod";
 export const env = createEnv({
   server: {
     AUTH_DISCORD_ID: z.string().min(1),
+    SUPABASE_URL: z.string(),
+    SUPABASE_ANON_KEY: z.string(),
     AUTH_DISCORD_SECRET: z.string().min(1),
     AUTH_SECRET:
       process.env.NODE_ENV === "production"
